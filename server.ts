@@ -1,5 +1,15 @@
+import "dotenv/config";
 import fastify from "fastify";
-import crypto from "node:crypto";
+import { fastifySwagger } from "@fastify/swagger";
+import {
+  validatorCompiler,
+  serializerCompiler,
+  type ZodTypeProvider,
+  jsonSchemaTransform,
+} from "fastify-type-provider-zod";
+import { createCourseRoute } from "./src/routes/create-course.ts";
+import { getCoursesRoute } from "./src/routes/get-courses.ts";
+import { getCourseByIdRoute } from "./src/routes/get-course-by-id.ts";
 
 const server = fastify({
   logger: {
@@ -11,50 +21,60 @@ const server = fastify({
       },
     },
   },
-});
+}).withTypeProvider<ZodTypeProvider>();
 
-const courses = [
-  { id: "1", title: "Curso 1" },
-  { id: "2", title: "Curso 2" },
-  { id: "3", title: "Curso 3" },
-  { id: "4", title: "Curso 4" },
-];
+// server.register(fastifySwagger, {
+//   openapi: {
+//     info: {
+//       title: "Cursos API",
+//       description: "API para gerenciar cursos",
+//       version: "1.0.0",
+//     },
+//   },
+//   transform: jsonSchemaTransform,
+// });
 
-server.get("/courses", (request, reply) => {
-  return reply.send({ courses });
-});
+async function startServer() {
+  if (process.env.NODE_ENV === "development") {
+    server.register(fastifySwagger, {
+      openapi: {
+        info: {
+          title: "Cursos API",
+          description: "API para gerenciar cursos",
+          version: "1.0.0",
+        },
+      },
+      transform: jsonSchemaTransform,
+    });
 
-server.get("/courses/:id", (request, reply) => {
-  type Params = {
-    id: string;
-  };
-
-  const params = request.params as Params;
-  const courseId = params.id;
-  const course = courses.find((course) => course.id === courseId);
-  if (course) {
-    return { course };
-  }
-  return reply.status(404).send();
-});
-
-server.post("/courses", (request, reply) => {
-  type Body = {
-    title: string;
-  };
-
-  const body = request.body as Body;
-  const courseId = crypto.randomUUID();
-  const courseTitle = body.title;
-
-  if (!courseTitle) {
-    return reply.status(400).send({ message: "Título obrigatório" });
+    const apiReferenceModule = await import("@scalar/fastify-api-reference");
+    const scalarApiReference = apiReferenceModule.default;
+    server.register(scalarApiReference, {
+      routePrefix: "/docs",
+    });
   }
 
-  courses.push({ id: courseId, title: courseTitle });
-  return reply.status(201).send({ courseId });
-});
+  server.setSerializerCompiler(serializerCompiler);
+  server.setValidatorCompiler(validatorCompiler);
 
-server.listen({ port: 3333 }).then(() => {
+  server.register(createCourseRoute);
+  server.register(getCoursesRoute);
+  server.register(getCourseByIdRoute);
+
+  await server.listen({ port: 3333 });
   console.log("HTTP server running!");
-});
+}
+
+// async function startServer() {
+//   const apiReferenceModule = await import("@scalar/fastify-api-reference");
+//   const scalarApiReference = apiReferenceModule.default;
+
+//   server.register(scalarApiReference, {
+//     routePrefix: "/docs",
+//   });
+
+//   await server.listen({ port: 3333 });
+//   console.log("HTTP server running!");
+// }
+
+startServer();
