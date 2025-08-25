@@ -75,12 +75,12 @@ drizzle/
 ```mermaid
 flowchart TD
     A[Usuário faz requisição HTTP] --> B{Endpoint}
-    B -->|POST /courses| C[Validação dos dados (Zod)]
+    B -- POST /courses --> C[Validação dos dados (Zod)]
     C --> D[Inserção no banco (Drizzle ORM)]
     D --> E[Retorna curso criado]
-    B -->|GET /courses| F[Consulta todos os cursos (Drizzle ORM)]
+    B -- GET /courses --> F[Consulta todos os cursos (Drizzle ORM)]
     F --> G[Retorna lista de cursos]
-    B -->|GET /courses/:id| H[Consulta curso por ID (Drizzle ORM)]
+    B -- GET /courses/:id --> H[Consulta curso por ID (Drizzle ORM)]
     H --> I[Retorna curso encontrado]
 ```
 
